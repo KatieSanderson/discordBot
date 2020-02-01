@@ -1,7 +1,9 @@
-import leetcodeAPI.LeetcodeAPIConnector;
-import leetcodeAPI.data.DifficultyLevel;
-import leetcodeAPI.data.LeetcodeAPI;
-import leetcodeAPI.data.LeetcodeQuestion;
+package leetcode;
+
+import leetcode.api.LeetcodeApiConnector;
+import leetcode.api.model.DifficultyLevel;
+import leetcode.api.model.LeetcodeQuestion;
+import leetcode.api.model.LeetcodeResponse;
 import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.events.GenericEvent;
 import net.dv8tion.jda.api.events.ReadyEvent;
@@ -22,31 +24,45 @@ import static java.time.temporal.ChronoUnit.SECONDS;
 
 public class ReadyListener implements EventListener {
 
-    private final int secondsInADay = 24 * 60 * 60;
+    private static final int SECONDS_IN_A_DAY = 24 * 60 * 60;
+    private static final int START_TIME_HOUR = 20;
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
     @Override
     public void onEvent(@Nonnull GenericEvent event) {
         if (event instanceof ReadyEvent) {
             TextChannel textChannel = event.getJDA().getTextChannelsByName("general", true).get(0);
-            LeetcodeAPI leetcodeAPI = LeetcodeAPIConnector.getLeetcodeAPI();
-            Map<DifficultyLevel, List<LeetcodeQuestion>> map = sortQuestionsByDifficulty(leetcodeAPI);
+            try {
+                LeetcodeResponse leetcodeResponse = LeetcodeApiConnector.getLeetcodeResponse();
+                Map<DifficultyLevel, List<LeetcodeQuestion>> map = sortQuestionsByDifficulty(leetcodeResponse);
+                scheduler.scheduleAtFixedRate(new LeetcodeRunnable(textChannel, map), getSecondsToStart(), SECONDS_IN_A_DAY, TimeUnit.SECONDS);
+//                new LeetcodeRunnable(textChannel, map).run();
+            } catch (RuntimeException e) {
+                e.printStackTrace();
+                textChannel.sendMessage("Error during application start-up. The development team has been notified.").queue();
+                // TODO: actually send notification
+            }
 
-            LocalTime now = LocalTime.now(ZoneOffset.UTC);
-            LocalTime eightPM = LocalTime.of(20, 0);
-            long secondsTo8PM = (SECONDS.between(now, eightPM) + secondsInADay) % secondsInADay;
-
-            scheduler.scheduleAtFixedRate(new LeetcodeRunnable(textChannel, map), secondsTo8PM, secondsInADay, TimeUnit.SECONDS);
         }
     }
 
-    private Map<DifficultyLevel, List<LeetcodeQuestion>> sortQuestionsByDifficulty(LeetcodeAPI leetcodeAPI) {
+    private long getSecondsToStart() {
+        LocalTime now = LocalTime.now(ZoneOffset.UTC);
+        LocalTime startTime = LocalTime.of(START_TIME_HOUR, 0);
+        long secondsToStart = SECONDS.between(now, startTime);
+        if (now.isAfter(startTime)) {
+            secondsToStart += SECONDS_IN_A_DAY;
+        }
+        return secondsToStart;
+    }
+
+    private Map<DifficultyLevel, List<LeetcodeQuestion>> sortQuestionsByDifficulty(LeetcodeResponse leetcodeResponse) {
         Map<DifficultyLevel, List<LeetcodeQuestion>> map = new HashMap<>();
         map.put(DifficultyLevel.EASY, new ArrayList<>());
         map.put(DifficultyLevel.MEDIUM, new ArrayList<>());
         map.put(DifficultyLevel.HARD, new ArrayList<>());
 
-        List<LeetcodeQuestion> questions = leetcodeAPI.getQuestions();
+        List<LeetcodeQuestion> questions = leetcodeResponse.getQuestions();
         for (LeetcodeQuestion question : questions) {
             DifficultyLevel level;
             switch (question.getDifficulty().getLevel()) {

@@ -1,4 +1,4 @@
-package leetcodeAPI.data;
+package leetcode.api.model;
 
 import lombok.Getter;
 

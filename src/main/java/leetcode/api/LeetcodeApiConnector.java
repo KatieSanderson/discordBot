@@ -1,10 +1,11 @@
-package leetcodeAPI;
+package leetcode.api;
 
-
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import leetcodeAPI.data.LeetcodeAPI;
+import leetcode.LeetcodeConstants;
+import leetcode.api.model.LeetcodeResponse;
 import org.apache.http.HttpEntity;
-import org.apache.http.client.ClientProtocolException;
+import org.apache.http.HttpStatus;
 import org.apache.http.client.config.CookieSpecs;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -18,22 +19,15 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 
-public class LeetcodeAPIConnector {
+public class LeetcodeApiConnector {
 
-    private static String LEETCODE_DOMAIN = "https://leetcode.com";
-    private static String LEETCODE_ALGORITHMS_PATH = "/api/problems/algorithms/";
-
-    public static LeetcodeAPI getLeetcodeAPI() {
-        CloseableHttpClient httpClient = HttpClients.custom()
-                .setDefaultRequestConfig(RequestConfig.custom()
-                        .setCookieSpec(CookieSpecs.STANDARD).build())
-                .build();
+    public static LeetcodeResponse getLeetcodeResponse() {
         try (CloseableHttpClient client = HttpClients.custom().setDefaultRequestConfig(RequestConfig.custom().setCookieSpec(CookieSpecs.STANDARD).build()).build()) {
-            URI uri = new URIBuilder(LEETCODE_DOMAIN + LEETCODE_ALGORITHMS_PATH).build();
+            URI uri = new URIBuilder(LeetcodeConstants.LEETCODE_BASE_URL).setPath(LeetcodeConstants.LEETCODE_ALGORITHMS_PATH).build();
             HttpGet request = new HttpGet(uri);
 
             try (CloseableHttpResponse response = client.execute(request)) {
-                if (response.getStatusLine().getStatusCode() != 200) {
+                if (response.getStatusLine().getStatusCode() != HttpStatus.SC_OK) {
                     throw new RuntimeException("Connection error; status code [" + response.getStatusLine().getStatusCode() + "]");
                 }
                 HttpEntity entity = response.getEntity();
@@ -42,16 +36,14 @@ public class LeetcodeAPIConnector {
                 }
                 String result = EntityUtils.toString(entity);
 
-                // response entity expected to be JSON formatted to /leetcodeAPI objects
+                // response entity expected to be JSON formatted to /api objects
                 ObjectMapper mapper = new ObjectMapper();
-                return mapper.readValue(result, LeetcodeAPI.class);
-            } catch (ClientProtocolException e) {
-                throw new RuntimeException(e.getMessage());
+                mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+                return mapper.readValue(result, LeetcodeResponse.class);
             }
-        } catch (IOException | URISyntaxException ex) {
-            ex.printStackTrace();
+        } catch (IOException | URISyntaxException e) {
+           throw new RuntimeException("Exception thrown when obtaining Leetcode information", e);
         }
-        return null;
     }
 
 }
