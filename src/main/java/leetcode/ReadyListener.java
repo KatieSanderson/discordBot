@@ -26,23 +26,22 @@ public class ReadyListener implements EventListener {
 
     private static final int SECONDS_IN_A_DAY = 24 * 60 * 60;
     private static final int START_TIME_HOUR = 20;
+    private static final String CHANNEL_NAME = "leetcode";
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
     @Override
     public void onEvent(@Nonnull GenericEvent event) {
         if (event instanceof ReadyEvent) {
-            TextChannel textChannel = event.getJDA().getTextChannelsByName("general", true).get(0);
+            TextChannel textChannel = event.getJDA().getTextChannelsByName(CHANNEL_NAME, true).get(0);
             try {
                 LeetcodeResponse leetcodeResponse = LeetcodeApiConnector.getLeetcodeResponse();
                 Map<DifficultyLevel, List<LeetcodeQuestion>> map = sortQuestionsByDifficulty(leetcodeResponse);
                 scheduler.scheduleAtFixedRate(new LeetcodeRunnable(textChannel, map), getSecondsToStart(), SECONDS_IN_A_DAY, TimeUnit.SECONDS);
-//                new LeetcodeRunnable(textChannel, map).run();
             } catch (RuntimeException e) {
                 e.printStackTrace();
                 textChannel.sendMessage("Error during application start-up. The development team has been notified.").queue();
                 // TODO: actually send notification
             }
-
         }
     }
 
