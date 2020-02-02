@@ -26,7 +26,7 @@ public class ReadyListener implements EventListener {
 
     private static final int SECONDS_IN_A_DAY = 24 * 60 * 60;
     private static final int START_TIME_HOUR = 20;
-    private static final String CHANNEL_NAME = "leetcode";
+    private static final String CHANNEL_NAME = System.getenv("CHANNEL_NAME");
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
     @Override
