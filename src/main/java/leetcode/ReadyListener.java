@@ -36,7 +36,11 @@ public class ReadyListener implements EventListener {
             try {
                 LeetcodeResponse leetcodeResponse = LeetcodeApiConnector.getLeetcodeResponse();
                 Map<DifficultyLevel, List<LeetcodeQuestion>> map = sortQuestionsByDifficulty(leetcodeResponse);
-                scheduler.scheduleAtFixedRate(new LeetcodeRunnable(textChannel, map), getSecondsToStart(), SECONDS_IN_A_DAY, TimeUnit.SECONDS);
+                if (System.getenv("RUN_SCHEDULED").equals("TRUE")) {
+                    scheduler.scheduleAtFixedRate(new LeetcodeRunnable(textChannel, map), getSecondsToStart(), SECONDS_IN_A_DAY, TimeUnit.SECONDS);
+                } else {
+                    new LeetcodeRunnable(textChannel, map).run();
+                }
             } catch (RuntimeException e) {
                 e.printStackTrace();
                 textChannel.sendMessage("Error during application start-up. The development team has been notified.").queue();
