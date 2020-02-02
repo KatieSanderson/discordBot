@@ -4,6 +4,7 @@ import leetcode.api.LeetcodeApiConnector;
 import leetcode.api.model.DifficultyLevel;
 import leetcode.api.model.LeetcodeQuestion;
 import leetcode.api.model.LeetcodeResponse;
+import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.events.GenericEvent;
 import net.dv8tion.jda.api.events.ReadyEvent;
@@ -33,23 +34,30 @@ public class ReadyListener implements EventListener {
     @Override
     public void onEvent(@Nonnull GenericEvent event) {
         if (event instanceof ReadyEvent) {
-            TextChannel textChannel = event.getJDA().getTextChannelsByName(CHANNEL_NAME, true).get(0);
-            TextChannel generalTextChannel = event.getJDA().getTextChannelsByName(GENERAL_CHANNEL, true).get(0);
-            generalTextChannel.sendMessage("Hi! I'm a bot. I was created by Katie Sanderson to post daily Leetcode questions!").queue();
-            generalTextChannel.sendMessage("Source code: https://github.com/KatieSanderson/discordBot").queue();
-            try {
-                LeetcodeResponse leetcodeResponse = LeetcodeApiConnector.getLeetcodeResponse();
-                Map<DifficultyLevel, List<LeetcodeQuestion>> map = sortQuestionsByDifficulty(leetcodeResponse);
-                if (System.getenv("RUN_SCHEDULED").equals("TRUE")) {
-                    scheduler.scheduleAtFixedRate(new LeetcodeRunnable(textChannel, map), getSecondsToStart(), SECONDS_IN_A_DAY, TimeUnit.SECONDS);
-                } else {
-                    new LeetcodeRunnable(textChannel, map).run();
-                }
-            } catch (RuntimeException e) {
-                e.printStackTrace();
-                textChannel.sendMessage("Error during application start-up. The development team has been notified.").queue();
-                // TODO: actually send notification
+            ReadyEvent readyEvent = (ReadyEvent) event;
+            for (Guild guild : readyEvent.getJDA().getGuilds()) {
+                runForGuild(guild);
             }
+        }
+    }
+
+    private void runForGuild(Guild guild) {
+        TextChannel textChannel = guild.getTextChannelsByName(CHANNEL_NAME, true).get(0);
+        TextChannel generalTextChannel = guild.getTextChannelsByName(GENERAL_CHANNEL, true).get(0);
+        generalTextChannel.sendMessage("Hi! I'm a bot. I was created by Katie Sanderson to post daily Leetcode questions!").queue();
+        generalTextChannel.sendMessage("Source code: https://github.com/KatieSanderson/discordBot").queue();
+        try {
+            LeetcodeResponse leetcodeResponse = LeetcodeApiConnector.getLeetcodeResponse();
+            Map<DifficultyLevel, List<LeetcodeQuestion>> map = sortQuestionsByDifficulty(leetcodeResponse);
+            if (System.getenv("RUN_SCHEDULED").toLowerCase().equals("true")) {
+                scheduler.scheduleAtFixedRate(new LeetcodeRunnable(textChannel, map), getSecondsToStart(), SECONDS_IN_A_DAY, TimeUnit.SECONDS);
+            } else {
+                new LeetcodeRunnable(textChannel, map).run();
+            }
+        } catch (RuntimeException e) {
+            e.printStackTrace();
+            textChannel.sendMessage("Error during application start-up. The development team has been notified.").queue();
+            // TODO: actually send notification
         }
     }
 
