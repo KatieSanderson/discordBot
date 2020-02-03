@@ -25,15 +25,25 @@ import static java.time.temporal.ChronoUnit.SECONDS;
 public class ReadyListener implements EventListener {
 
     private static final int SECONDS_IN_A_DAY = 24 * 60 * 60;
-    private static final int START_TIME_HOUR = 20;
+    private static final int START_TIME_HOUR_DEFAULT = 20;
     private static final String CHANNEL_NAME = System.getenv("CHANNEL_NAME");
     private static final String GENERAL_CHANNEL = "general";
 
     private final Map<Guild, ScheduledExecutorService> guilds = new HashMap<>();
     private final Map<DifficultyLevel, List<LeetcodeQuestion>> leetcodeQuestions;
+    private final int startTimeHour;
 
-    public ReadyListener(Map<DifficultyLevel, List<LeetcodeQuestion>> leetcodeQuestions) {
+    ReadyListener(Map<DifficultyLevel, List<LeetcodeQuestion>> leetcodeQuestions) {
         this.leetcodeQuestions = leetcodeQuestions;
+        startTimeHour = getStartHour();
+    }
+
+    private int getStartHour() {
+        try {
+            return Integer.parseInt(System.getenv("START_TIME_GMT"));
+        } catch (NumberFormatException e) {
+            return START_TIME_HOUR_DEFAULT;
+        }
     }
 
     @Override
@@ -66,25 +76,30 @@ public class ReadyListener implements EventListener {
     }
 
     private void runForGuild(Guild guild) {
-        TextChannel textChannel = guild.getTextChannelsByName(CHANNEL_NAME, true).get(0);
         try {
-            ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
-            if (System.getenv("RUN_SCHEDULED").toLowerCase().equals("true")) {
-                scheduler.scheduleAtFixedRate(new LeetcodeRunnable(textChannel, leetcodeQuestions), getSecondsToStart(), SECONDS_IN_A_DAY, TimeUnit.SECONDS);
+            if (guild.getTextChannelsByName(CHANNEL_NAME, true).isEmpty()) {
+                TextChannel textChannel = guild.getTextChannelsByName(GENERAL_CHANNEL, true).get(0);
+                textChannel.sendMessage("Server does not have a \"" + CHANNEL_NAME + "\" channel. Please add so I can post my questions!").queue();
             } else {
-                scheduler.schedule(new LeetcodeRunnable(textChannel, leetcodeQuestions), 0, TimeUnit.SECONDS);
+                TextChannel textChannel = guild.getTextChannelsByName(CHANNEL_NAME, true).get(0);
+                ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+                if (System.getenv("RUN_SCHEDULED").toLowerCase().equals("true")) {
+                    scheduler.scheduleAtFixedRate(new LeetcodeRunnable(textChannel, leetcodeQuestions), getSecondsToStart(), SECONDS_IN_A_DAY, TimeUnit.SECONDS);
+                } else {
+                    scheduler.schedule(new LeetcodeRunnable(textChannel, leetcodeQuestions), 0, TimeUnit.SECONDS);
+                }
+                guilds.put(guild, scheduler);
             }
-            guilds.put(guild, scheduler);
         } catch (RuntimeException e) {
             e.printStackTrace();
-            textChannel.sendMessage("Error during application start-up. The development team has been notified.").queue();
+            System.out.println("Error during application start-up for guild [" + guild.getName() + "]. The development team has been notified.");
             // TODO: actually send notification
         }
     }
 
     private long getSecondsToStart() {
         LocalTime now = LocalTime.now(ZoneOffset.UTC);
-        LocalTime startTime = LocalTime.of(START_TIME_HOUR, 0);
+        LocalTime startTime = LocalTime.of(startTimeHour, 0);
         long secondsToStart = SECONDS.between(now, startTime);
         if (now.isAfter(startTime)) {
             secondsToStart += SECONDS_IN_A_DAY;
