@@ -40,6 +40,10 @@ public class Bot {
 
         List<LeetcodeQuestion> questions = leetcodeResponse.getQuestions();
         for (LeetcodeQuestion question : questions) {
+            // skip premium questions, ain't nobody got money for that
+            if (question.isPremium()) {
+                continue;
+            }
             DifficultyLevel level;
             switch (question.getDifficulty().getLevel()) {
                 case 1 :
