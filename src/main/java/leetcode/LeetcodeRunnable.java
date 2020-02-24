@@ -41,7 +41,7 @@ public class LeetcodeRunnable implements Runnable {
         LeetcodeQuestion nextQuestion = getNextQuestion(level);
         URI uri = getQuestionURI(nextQuestion.getStat().getUrl());
         String questionDifficulty = String.format("`%-16s` ", level.getLevelString() + " Question:");
-        textChannel.sendMessage(questionDifficulty + nextQuestion.getStat().getTitle() + " (" + uri + ")").queue();
+        textChannel.sendMessage(questionDifficulty + nextQuestion.getStat().getId() + " - " + nextQuestion.getStat().getTitle() + " (" + uri + ")").queue();
     }
 
     private URI getQuestionURI(String questionPath) {
