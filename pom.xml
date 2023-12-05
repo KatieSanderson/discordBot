@@ -10,7 +10,7 @@
 
     <properties>
         <dv8tion.version>4.1.1_104</dv8tion.version>
-        <logback.version>1.2.3</logback.version>
+        <logback.version>1.2.13</logback.version>
         <lombok.version>1.18.10</lombok.version>
         <jackson.version>2.10.2</jackson.version>
     </properties>
